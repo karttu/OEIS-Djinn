@@ -6,7 +6,7 @@
 ;;
 ;; OEIS-Djinn-on-SQL-find-links.rkt - For the OEIS Djinn project, Antti Karttunen started writing this 2017-12-02 (December 02 2017).
 ;;
-;; Last edited 2017-12-22 by AK.
+;; Last edited 2019-02-02 by AK.
 ;;
 ;;
 ;; The module that builds the "family tree" of sequences found from Aseqs-table.
@@ -17,8 +17,8 @@
 ;;
 
 
-;; (define djinn-c (sqlite3-connect #:database "c:/users/karttu/A/matikka/OEIS-Djinn/Adjinn-A101296.db"))
-(define djinn-c (sqlite3-connect #:database "c:/users/karttu/A/matikka/OEIS-Djinn/Adjinn-A032742.db"))
+;; (define djinn-c (sqlite3-connect #:database "/home/antti/A/OEIS-Djinn-work/Adjinn-A101296.db"))
+(define djinn-c (sqlite3-connect #:database "/home/antti/A/OEIS-Djinn-work/Adjinn-A032742.db"))
 
 
 (define (create-tables c)
@@ -453,6 +453,37 @@
                    )
 )
 
+
+;; For the starters we have a simple cartesian product MASTERLIST x MASTERLIST without any fancy optimizations:
+;; Doesn't work too well yet, as we get: INTERNAL ERROR! query-exact-point-where-A-no-more-implies-B?: A066247, A010051 imax < imin (1 < 2)
+;, (Whether it's because of my faulty logic or some memory corruption, I don't know yet).
+
+(define (query-and-mark-whether-any-implies-any c MASTERLIST date)
+  (for-each
+    (lambda (seqArec)
+      (let* ((Anum (seqinfo-anumber seqArec))
+             (Anum-eclasses (query-eq_classes c Anum))
+            )
+          (for-each
+            (lambda (seqBrec)
+              (query-and-mark-whether-A-implies-or-not-B-in-given-range? c Anum Anum-eclasses (seqinfo-anumber seqBrec)
+                                                                         0 ;; Shifted by
+                                                                         (max 2 (seqinfo-domain-start seqArec) (seqinfo-domain-start seqBrec)) ;; domain start.
+                                                                         (min (seqinfo-domain-end seqArec) (seqinfo-domain-end seqBrec))
+                                                                         date
+              )
+            )
+            MASTERLIST
+          )
+      )
+    )
+    MASTERLIST
+  )
+)
+
+;; (query-and-mark-whether-any-implies-any djinn-c MASTERLIST "2017-12-22")
+
+
 ;;
 ;;
 ;; (define A295885eclasses (query-eq_classes-in-range djinn-c 295885 2 65536))
@@ -475,11 +506,11 @@
 
 (define A014673_implies_A032742? (query-whether-A-does-not-imply-B-in-given-range? djinn-c 14673 A014673eclasses 032742 1 10000))
 
-(define A032742-domain-range (query-domain-of djinn-c 32742))
+;; (define A032742-domain-range (query-domain-of djinn-c 32742))
 
-(query-and-mark-whether-A-implies-or-not-B-in-given-range? djinn-c 032742 A032742eclasses 014673 0 1 10000 "2017-12-22")
+;; (query-and-mark-whether-A-implies-or-not-B-in-given-range? djinn-c 032742 A032742eclasses 014673 0 1 10000 "2017-12-22")
 
-(query-and-mark-whether-A-implies-or-not-B-in-given-range? djinn-c 014673 A014673eclasses 032742 0 1 10000 "2017-12-22")
+;; (query-and-mark-whether-A-implies-or-not-B-in-given-range? djinn-c 014673 A014673eclasses 032742 0 1 10000 "2017-12-22")
 
 ;; (define A295885eclasses (query-eq_classes-in-range djinn-c 295885 2 65536))
 
