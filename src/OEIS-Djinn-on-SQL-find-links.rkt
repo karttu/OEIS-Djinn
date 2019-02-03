@@ -6,7 +6,10 @@
 ;;
 ;; OEIS-Djinn-on-SQL-find-links.rkt - For the OEIS Djinn project, Antti Karttunen started writing this 2017-12-02 (December 02 2017).
 ;;
-;; Last edited 2019-02-02 by AK.
+;; Edited 2019-02-02 by AK:  Added query-and-mark-whether-any-implies-any
+;; Edited 2019-02-03 by AK:  Corrected union-of-one-or-more-eclasses-of-up-to-limit? now called union-of-one-or-more-eclasses-inside-limits?
+;;
+
 ;;
 ;;
 ;; The module that builds the "family tree" of sequences found from Aseqs-table.
@@ -282,7 +285,7 @@
              (if (null? distvals) ;; If list of distinct values is finished...
                  #f               ;;  ... then we have found that A _seems_ to imply B in given range, so return #f
                  (let ((B-eclass (query-list c sel2 Bnum range_begin range_end (first distvals))))
-                    (if (union-of-one-or-more-eclasses-of-up-to-limit? B-eclass A_eclasses range_end)
+                    (if (union-of-one-or-more-eclasses-inside-limits? B-eclass A_eclasses range_begin range_end)
                         (loop (cdr distvals)) ;; Was OK, go to fetch the next eclass of B.
 ;; otherwise, that B-eclass wasn't dispersed nicely among eclasses of A, return the first offending eq.class of B:
                         B-eclass
@@ -296,17 +299,20 @@
 )
 
 
-;; This is like union-of-one-or-more-eclasses-of? but we ignore all terms in eclasses that are > uplimit
-(define (union-of-one-or-more-eclasses-of-up-to-limit? eclass eclasses uplimit)
-   (every (lambda (ec)
-            (let ((first-is? (not (not (member (first ec) eclass))))) ;; is first of ec in eclass ?
-               (let loop ((ecl (rest ec))) ;; then check the other elements of ec, whether they agree...
-                  (cond ((null? ecl) #t)
-                        ((> (first ecl) uplimit) (loop (rest ecl))) ;; Skip the terms over the uplimit.
-                        ((not (eq? (not (not (member (first ecl) eclass))) first-is?)) #f) ;; Failed
-                        (else (loop (rest ecl)))
+;; This is like union-of-one-or-more-eclasses-of? but we ignore all terms in eclasses that are either < lowlim or > uplim
+(define (union-of-one-or-more-eclasses-inside-limits? eclass eclasses lowlim uplim)
+   (every (lambda (ecraw)
+            (let ((ec (filter (lambda (x) (<= lowlim x uplim)) ecraw)))
+              (or (null? ec)
+                  (let ((first-is? (not (not (member (first ec) eclass))))) ;; is first of ec in eclass ?
+                    (let loop ((ecl (rest ec))) ;; then check the other elements of ec, whether they agree...
+                      (cond ((null? ecl) #t)
+                            ((not (eq? (not (not (member (first ecl) eclass))) first-is?)) #f) ;; Failed
+                            (else (loop (rest ecl)))
+                      )
+                    )
                   )
-               )
+              )
             )
           )
           eclasses
@@ -454,9 +460,8 @@
 )
 
 
-;; For the starters we have a simple cartesian product MASTERLIST x MASTERLIST without any fancy optimizations:
-;; Doesn't work too well yet, as we get: INTERNAL ERROR! query-exact-point-where-A-no-more-implies-B?: A066247, A010051 imax < imin (1 < 2)
-;, (Whether it's because of my faulty logic or some memory corruption, I don't know yet).
+;; For the starters we have a simple cartesian product MASTERLIST x MASTERLIST without any fancy optimizations. Very slow!
+
 
 (define (query-and-mark-whether-any-implies-any c MASTERLIST date)
   (for-each
@@ -464,6 +469,8 @@
       (let* ((Anum (seqinfo-anumber seqArec))
              (Anum-eclasses (query-eq_classes c Anum))
             )
+        (begin
+          (display (format "A~a: domain start=~a, domain end=~a, distinct eq.classes=~a~n" (Anum->str Anum) (seqinfo-domain-start seqArec) (seqinfo-domain-end seqArec) (length Anum-eclasses)))
           (for-each
             (lambda (seqBrec)
               (query-and-mark-whether-A-implies-or-not-B-in-given-range? c Anum Anum-eclasses (seqinfo-anumber seqBrec)
@@ -475,13 +482,14 @@
             )
             MASTERLIST
           )
+        )
       )
     )
     MASTERLIST
   )
 )
 
-;; (query-and-mark-whether-any-implies-any djinn-c MASTERLIST "2017-12-22")
+(query-and-mark-whether-any-implies-any djinn-c MASTERLIST "2017-12-22bis")
 
 
 ;;
