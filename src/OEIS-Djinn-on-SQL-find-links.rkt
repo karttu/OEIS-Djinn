@@ -8,6 +8,7 @@
 ;;
 ;; Edited 2019-02-02 by AK:  Added query-and-mark-whether-any-implies-any
 ;; Edited 2019-02-03 by AK:  Corrected union-of-one-or-more-eclasses-of-up-to-limit? now called union-of-one-or-more-eclasses-inside-limits?
+;;        2010-02-04 by AK:  A new, sane implementation of query-whether-A-does-not-imply-B-in-given-range? etc. Much faster and identical results.
 ;;
 
 ;;
@@ -47,11 +48,37 @@
 ;; Note that if for all i,j: A(i) = A(j) => B(i) = B(j), then the starting points
 ;; of each equivalence class in B (the third elements of the triplet) must be a subset
 ;; of the starting points for sequence A.
+;; Note that the converse is not true. If seq A begins as 1, 1, 2, 1, 3, 3, 3, 3, ...
+;;                                    and seq B begins as 2, 2, 5, 5, 3, 3, 3, 3, ...
+;; then even though the starting points of each equivalence class are same: 1, 3 and 5
+;; it does not follow that a(i) = a(j) => b(i) = b(j) for all i, j, as a(4) = a(2) (= a(1) = 1),
+;; but b(4) != b(2).
+;;
 
 (define (query-anum-eqclass-values-and-starting-points c Anum)
   (let ((sel (prepare c "select v1.Anum, v1.Value, v1.Nval from Aseqs v1 where v1.Anum = ? and v1.Nval = (select v2.Nval from Aseqs v2 where v2.Anum = v1.Anum and v2.Value = v1.Value ORDER BY v2.Anum, v2.Value, v2.Nval LIMIT 1) ORDER BY v1.Nval")))
     (call-with-transaction c
        (lambda () (query-rows c sel Anum))
+    )
+  )
+)
+
+(define (query-anum-values-into-vector c Anum range_begin range_end)
+  (let ((valvec (make-vector (+ 1 range_end) #f))
+        (sel (prepare c "select Nval, Value from Aseqs where Anum = ? and Nval >= ? and Nval <= ?"))
+       )
+    (call-with-transaction c
+       (lambda ()
+         (let loop ((rows (query-rows c sel Anum range_begin range_end)))
+                (cond ((null? rows) valvec)
+                      (else
+                         (begin (vector-set! valvec (vector-ref (first rows) 0) (vector-ref (first rows) 1))
+                                (loop (cdr rows))
+                         )
+                      )
+                )
+         )
+       )
     )
   )
 )
@@ -64,6 +91,53 @@
     )
   )
 )
+
+
+(define (query-eqclass-starting-points-and-values-at-least c Anum lowlim)
+  (let ((sps (make-hash))
+        (sel (prepare c "select v1.Nval, v1.Value from Aseqs v1 where v1.Anum = ? and v1.Nval = (select v2.Nval from Aseqs v2 where v2.Anum = v1.Anum and v2.Nval >= ? and v2.Value = v1.Value ORDER BY v2.Anum, v2.Value, v2.Nval LIMIT 1) ORDER BY v1.Nval"))
+       )
+    (call-with-transaction c
+       (lambda ()
+         (let loop ((rows (query-rows c sel Anum lowlim)))
+            (cond ((null? rows) sps)
+                  (else
+                   (begin
+                      (hash-set! sps (vector-ref (first rows) 1) (vector-ref (first rows) 0))
+                      (loop (cdr rows))
+                   )
+                  )
+            )
+         )
+       )
+    )
+  )
+)
+
+
+
+
+(define (query-eqclass-starting-points-and-values-in-range c Anum lowlim uplim)
+  (let ((sps (make-hash))
+        (sel (prepare c "select v1.Nval, v1.Value from Aseqs v1 where v1.Anum = ? and v1.Nval = (select v2.Nval from Aseqs v2 where v2.Anum = v1.Anum and v2.Nval >= ? and v2.Nval <= ? and v2.Value = v1.Value ORDER BY v2.Anum, v2.Value, v2.Nval LIMIT 1) ORDER BY v1.Nval"))
+       )
+    (call-with-transaction c
+       (lambda ()
+         (let loop ((rows (query-rows c sel Anum lowlim uplim)))
+            (cond ((null? rows) sps)
+                  (else
+                   (begin
+                      (hash-set! sps (vector-ref (first rows) 1) (vector-ref (first rows) 0))
+                      (loop (cdr rows))
+                   )
+                  )
+            )
+         )
+       )
+    )
+  )
+)
+
 
 (define (query-eqclass-starting-points-for-all-Anums c)
   (let ((sel (prepare c "select v1.Anum, v1.Nval from Aseqs v1 where v1.Nval = (select v2.Nval from Aseqs v2 where v2.Anum = v1.Anum and v2.Value = v1.Value ORDER BY v2.Anum, v2.Value, v2.Nval LIMIT 1) ORDER BY v1.Anum, V1.Nval")))
@@ -197,14 +271,14 @@
 )
 
 
-(define (query-insert-mark-that-A-implies-B-in-given-range c Anum Bnum shifted_by range_begin range_end whendate)
+(define (query-insert-mark-that-A-implies-B-in-given-range c Anum Bnum shifted_by comdomain_begin comdomain_end whendate)
   (let ((stmt (prepare c "INSERT INTO AimpliesB(Anum,Bnum,ShiftedBy,BeginN,EndN,SepPoint,WhenDate) VALUES(?,?,?,?,?,?,?)")))
-     (query-exec c stmt Anum Bnum shifted_by range_begin range_end 0 whendate)
+     (query-exec c stmt Anum Bnum shifted_by comdomain_begin comdomain_end 0 whendate)
   )
 )
 
 
-(define (query-whether-already-marked-that-A-implies-B-in-given-range? c A_Anum B_Anum range_begin range_end)
+(define (query-whether-already-marked-that-A-implies-B-in-given-range? c A_Anum B_Anum comdomain_begin comdomain_end)
   (let ((sel1 (prepare c "select BeginN, EndN from AimpliesB where Anum = ? and Bnum = ? and SepPoint = 0")))
     (call-with-transaction c
        (lambda ()
@@ -217,150 +291,40 @@
   )
 )
 
-(define (query-and-mark-whether-A-implies-or-not-B-in-given-range? c Anum A_eclasses Bnum shifted_by range_begin range_end whendate)
+
+(define (query-and-mark-whether-A-implies-or-not-B-in-given-range? c Anum Avals Asps Bnum shifted_by comdomain_begin comdomain_end whendate)
   (let ((stmt (prepare c "INSERT INTO AimpliesB(Anum,Bnum,ShiftedBy,BeginN,EndN,SepPoint,WhenDate) VALUES(?,?,?,?,?,?,?)")))
-    (cond ((query-whether-A-does-not-imply-B-in-given-range? c Anum A_eclasses Bnum range_begin range_end)
+    (cond ((query-whether-A-does-not-imply-B-in-given-range? c Anum Avals Asps Bnum comdomain_begin comdomain_end)
              =>
-             (lambda (eclass)
-               (let ((sp (query-exact-point-where-A-no-more-implies-B? c Anum A_eclasses Bnum range_begin range_end)))
-                  (query-exec c stmt Anum Bnum shifted_by range_begin range_end sp whendate)
-               )
-             )
+             (lambda (sp) (query-exec c stmt Anum Bnum shifted_by comdomain_begin comdomain_end sp whendate))
           )
           (else ;; it seems that A implies B (in the given range). SepPoint field is set to zero to mark that:
-            (query-exec c stmt Anum Bnum shifted_by range_begin range_end 0 whendate)
+            (query-exec c stmt Anum Bnum shifted_by comdomain_begin comdomain_end 0 whendate)
           )
     )
   )
 )
 
 
-;; Do a binary search over [range_begin, range_end], searching the smallest n where it is clear
-;; that A(i) = A(j) => B(i) = B(j) does not hold for range_begin <= i,j <= n.
 
-(define (query-exact-point-where-A-no-more-implies-B? c Anum A_eclasses Bnum range_begin range_end)
-  (let loop ((imin range_begin) (imax range_end))
-     (cond ((< imax imin)
-              (error (format
-                  "~nINTERNAL ERROR! query-exact-point-where-A-no-more-implies-B?: A~a, A~a imax < imin (~a < ~a)~n"
-                        (Anum->str Anum) (Anum->str Bnum) imax imin
-                )
+
+(define (query-whether-A-does-not-imply-B-in-given-range? c Anum Avals Asps Bnum comdomain_begin comdomain_end)
+  (let ((Bvals (query-anum-values-into-vector c Bnum comdomain_begin comdomain_end)))
+    (let loop ((n comdomain_begin))
+          (if (>= n comdomain_end) ;; If finished...
+              #f               ;;  ... then we have found that A _seems_ to imply B in given range, so return #f
+              (let ((Bv0 (vector-ref Bvals (hash-ref Asps (vector-ref Avals n))))) ;; Let Bv0 = B[min index i for which A(i) = A(n)].
+                 (if (not (equal? Bv0 (vector-ref Bvals n))) ;; If Bv0 != B[n], then we cannot have A(i) = A(j) => B(i) = B(j) for all i, j in [comdomain_begin, comdomain_end]
+                    n ;; Return the offeding index (the first "separation point")
+                    (loop (+ 1 n))
+                 )
               )
-           )
-     )
-     (let* ((imid (+ imin (/ (- imax imin (modulo (- imax imin) 2)) 2))) ;; imid = avg(imin,imax)
-            (s0 (query-whether-A-does-not-imply-B-in-given-range? c Anum A_eclasses Bnum range_begin imid))
-           )
-       (cond ((not s0) ;; Still A => B in domain [range_begin, imid] ?
-                 (if (query-whether-A-does-not-imply-B-in-given-range? c Anum A_eclasses Bnum range_begin (+ 1 imid))
-                                  ;; But not  in domain [range_begin, imid+1] ?
-                     (+ 1 imid) ;; The we have found the exact separation point.
-                     (loop (+ imid 1) imax) ;; Otherwise search from the range [imid+1,imax]
-                 )
-             )
-             (else (loop imin (- imid 1))) ;; Does not imply in [range_begin, imid], so search from [imin, imid-1].
-       )
-     )
-  )
-)
-
-;; We should fail if for two distinct n, n_1 and n_2 in a single equivalence class of A,
-;; the sequence B has different values.
-;; Note that B still might have same values for two distinct n's in two different e-classes of A.
-;; (B might be coarser than A).
-
-;; Thus, for each whole eclass of B, if we remove the corresponding Nval's from eclasses of A's,
-;; each such affected e-class should be removed totally (leaving just a ()), otherwise A is not
-;; a refinement partition of B.
-
-
-(define (query-whether-A-does-not-imply-B-in-given-range? c Anum A_eclasses Bnum range_begin range_end)
-  (let ((sel1 (prepare c "select distinct(Value) from Aseqs where Anum = ? and Nval >= ? and Nval <= ?"))
-        (sel2 (prepare c "select Nval from Aseqs where Anum = ? and Nval >= ? and Nval <= ? and Value = ?"))
-       )
-    (call-with-transaction c
-       (lambda ()
-;; First we fetch a list of distinct values that occur in the sequence B, in the given range:
-          (let loop ((distvals (query-list c sel1 Bnum range_begin range_end)))
-             (if (null? distvals) ;; If list of distinct values is finished...
-                 #f               ;;  ... then we have found that A _seems_ to imply B in given range, so return #f
-                 (let ((B-eclass (query-list c sel2 Bnum range_begin range_end (first distvals))))
-                    (if (union-of-one-or-more-eclasses-inside-limits? B-eclass A_eclasses range_begin range_end)
-                        (loop (cdr distvals)) ;; Was OK, go to fetch the next eclass of B.
-;; otherwise, that B-eclass wasn't dispersed nicely among eclasses of A, return the first offending eq.class of B:
-                        B-eclass
-                    )
-                 )
-             )
           )
-       )
     )
   )
 )
 
 
-;; This is like union-of-one-or-more-eclasses-of? but we ignore all terms in eclasses that are either < lowlim or > uplim
-(define (union-of-one-or-more-eclasses-inside-limits? eclass eclasses lowlim uplim)
-   (every (lambda (ecraw)
-            (let ((ec (filter (lambda (x) (<= lowlim x uplim)) ecraw)))
-              (or (null? ec)
-                  (let ((first-is? (not (not (member (first ec) eclass))))) ;; is first of ec in eclass ?
-                    (let loop ((ecl (rest ec))) ;; then check the other elements of ec, whether they agree...
-                      (cond ((null? ecl) #t)
-                            ((not (eq? (not (not (member (first ecl) eclass))) first-is?)) #f) ;; Failed
-                            (else (loop (rest ecl)))
-                      )
-                    )
-                  )
-              )
-            )
-          )
-          eclasses
-   )
-)
-
-;; If we remove all elements of eclass from those lists in eclasses where those elements reside,
-;; are such eclasses eliminated completely? If so, return #t, otherwise false if they leave "residues".
-;; This is equivalent to asking a question whether the sum of sizes of eclasses where elements of eclass
-;; reside is equal to the size of eclass. Or equally: whether for each eclass ec in eclasses either all or
-;; none of its elements are in eclass.
-
-;; (union-of-one-or-more-eclasses-of? '(2 5 7) '((1 3) (2) (4) (5 7) (6 8 9))) --> #t
-;; 
-;; (union-of-one-or-more-eclasses-of? '(2 5 7) '((1 3) (2) (4) (5 7 11) (6 8 9))) --> #f
-;; 
-;; (union-of-one-or-more-eclasses-of? '(2 5 7 11 4) '((1 3) (2) (4) (5 7 11) (6 8 9))) --> #t
-;; 
-;; (union-of-one-or-more-eclasses-of? '(4) '((1 3) (2) (4) (5 7 11) (6 8 9))) --> #t
-;; 
-;; (union-of-one-or-more-eclasses-of? '(5 4 7 3 11 1) '((1 3) (2) (4) (5 7 11) (6 8 9))) --> #t
-;; 
-;; (union-of-one-or-more-eclasses-of? '(5 4 3 11 1) '((1 3) (2) (4) (5 7 11) (6 8 9))) --> #f
-;;
-
-
-(define (union-of-one-or-more-eclasses-of? eclass eclasses)
-   (every (lambda (ec)
-            (let ((first-is? (not (not (member (first ec) eclass))))) ;; is first of ec in eclass ?
-               (let loop ((ecl (rest ec))) ;; then check the other elements of ec, whether they agree...
-                  (cond ((null? ecl) #t)
-                        ((not (eq? (not (not (member (first ecl) eclass))) first-is?)) #f) ;; Failed
-                        (else (loop (rest ecl)))
-                  )
-               )
-            )
-          )
-          eclasses
-   )
-)
-
-
-(define (every pred? lista)
-   (cond ((null? lista) #t)
-         ((not (pred? (first lista))) #f)
-         (else (every pred? (rest lista)))
-   )
-)
 
 
 ;; Beware applying this to big sets like A101296:
@@ -460,36 +424,56 @@
 )
 
 
-;; For the starters we have a simple cartesian product MASTERLIST x MASTERLIST without any fancy optimizations. Very slow!
+;; For the starters we have a simple cartesian product MASTERLIST x MASTERLIST without any fancy optimizations.
 
 
 (define (query-and-mark-whether-any-implies-any c MASTERLIST date)
-  (for-each
-    (lambda (seqArec)
-      (let* ((Anum (seqinfo-anumber seqArec))
-             (Anum-eclasses (query-eq_classes c Anum))
+ (let outloop ((i 1) (seqrecs MASTERLIST))
+      (if (null? seqrecs)
+          i
+          (let* ((seqArec (first seqrecs))
+                 (Anum (seqinfo-anumber seqArec))
+                 (Astart (seqinfo-domain-start seqArec))
+                (Aend (seqinfo-domain-end seqArec))
+                (Avals (query-anum-values-into-vector c Anum 0 Aend))
+               )
+            (begin
+               (display (format "A~a: domain start=~a, domain end=~a, eq.classes=~a (~a)~n" (Anum->str Anum) Astart Aend (seqinfo-num-of-eclasses seqArec) i))
+               (let inloop ((seqrecsB MASTERLIST) (Asps-old #f) (old_comdomain_start #f))
+                    (cond ((null? seqrecsB) (outloop (+ 1 i) (cdr seqrecs)))
+                          (else
+                             (let* ((seqBrec (first seqrecsB))
+                                    (Bnum (seqinfo-anumber seqBrec))
+                                    (Bstart (seqinfo-domain-start seqBrec))
+                                    (Bend (seqinfo-domain-end seqBrec))
+                                    (comdomain_start (max 2 Astart Bstart)) ;; start of common domain.
+                                    (comdomain_end (min Aend Bend)) ;; the end of common domain.
+                                    (Asps (if (eq? old_comdomain_start comdomain_start)
+                                              Asps-old
+                                              (query-eqclass-starting-points-and-values-at-least c Anum comdomain_start)
+                                          )
+                                    )
+                                   )
+                                 (begin
+                                   (query-and-mark-whether-A-implies-or-not-B-in-given-range? c Anum Avals Asps Bnum
+                                                                                              0 ;; Shifted by
+                                                                                              comdomain_start
+                                                                                              comdomain_end
+                                                                                              date
+                                   )
+                                   (inloop (cdr seqrecsB) Asps comdomain_start)
+                                 )
+                             )
+                          )
+                    )
+               )
             )
-        (begin
-          (display (format "A~a: domain start=~a, domain end=~a, distinct eq.classes=~a~n" (Anum->str Anum) (seqinfo-domain-start seqArec) (seqinfo-domain-end seqArec) (length Anum-eclasses)))
-          (for-each
-            (lambda (seqBrec)
-              (query-and-mark-whether-A-implies-or-not-B-in-given-range? c Anum Anum-eclasses (seqinfo-anumber seqBrec)
-                                                                         0 ;; Shifted by
-                                                                         (max 2 (seqinfo-domain-start seqArec) (seqinfo-domain-start seqBrec)) ;; domain start.
-                                                                         (min (seqinfo-domain-end seqArec) (seqinfo-domain-end seqBrec))
-                                                                         date
-              )
-            )
-            MASTERLIST
           )
-        )
       )
-    )
-    MASTERLIST
   )
 )
 
-(query-and-mark-whether-any-implies-any djinn-c MASTERLIST "2017-12-22bis")
+(query-and-mark-whether-any-implies-any djinn-c MASTERLIST "2017-12-22bus")
 
 
 ;;
@@ -502,17 +486,17 @@
 ;;
 ;;
 
-(define A032742startset (query-eqclass-starting-points djinn-c 032742))
+;; (define A032742startset (query-eqclass-starting-points djinn-c 032742))
 
-(define A032742eclasses (query-eq_classes djinn-c 032742))
+;; (define A032742eclasses (query-eq_classes djinn-c 032742))
 
-(define A032742_implies_itself? (query-whether-A-does-not-imply-B-in-given-range? djinn-c 03274 A032742eclasses 032724 1 10000))
+;; (define A032742_implies_itself? (query-whether-A-does-not-imply-B-in-given-range? djinn-c 03274 A032742eclasses 032724 1 10000))
 
-(define A014673eclasses (query-eq_classes djinn-c 014673))
+;; (define A014673eclasses (query-eq_classes djinn-c 014673))
 
-(define A032742_implies_A014673? (query-whether-A-does-not-imply-B-in-given-range? djinn-c 03274 A032742eclasses 014673 1 10000))
+;; (define A032742_implies_A014673? (query-whether-A-does-not-imply-B-in-given-range? djinn-c 03274 A032742eclasses 014673 1 10000))
 
-(define A014673_implies_A032742? (query-whether-A-does-not-imply-B-in-given-range? djinn-c 14673 A014673eclasses 032742 1 10000))
+;; (define A014673_implies_A032742? (query-whether-A-does-not-imply-B-in-given-range? djinn-c 14673 A014673eclasses 032742 1 10000))
 
 ;; (define A032742-domain-range (query-domain-of djinn-c 32742))
 
@@ -533,7 +517,7 @@
 
 (define implies-results (query-rows djinn-c "select * from AimpliesB")) ;;
 
-
+;; (call-with-output-file "/home/antti/A/OEIS-Djinn-work/A032742_implies_results_ver12.txt" (lambda (out) (for-each (lambda (res) (display res out) (newline out)) implies-results)))
 
 ;;
 ;; We should construct into table AimpliesB for all 2*C(n,2) = n*(n-1) pairs of n sequences A & B
