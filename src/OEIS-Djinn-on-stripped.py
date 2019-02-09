@@ -35,6 +35,8 @@
 #
 # 2018-11-08   Corrected a nasty bug in read_bfile_as_a_list which botched the reading of b-files with negative terms.
 #
+# 2019-02-09   And again corrected the very same function, so now the negative terms really are read as negative numbers.
+#
 
 import os
 import re
@@ -1260,7 +1262,7 @@ def read_bfile_as_a_list(filename):
   '''Open b-file for reading and construct a list from it.'''
   infp = open(filename,'r')
 
-  linepat = re.compile(r'^( *[0-9]+) *[-]*([0-9]+)')
+  linepat = re.compile(r'^(\s*[0-9]+)\s*([-]*[0-9]+)') # Last edited 2019-02-09.
 
   terms = []
 
