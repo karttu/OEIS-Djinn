@@ -37,6 +37,21 @@
 #
 # 2019-02-09   And again corrected the very same function, so now the negative terms really are read as negative numbers.
 #
+# 2021-11-14   Added "usage notes" to the beginning of list selected_anums, when used without any arguments.
+#              (Grep for global variable outputfile below. To get help for argumented usage, start with option --help).
+#              PLEASE note that the signal / noise ratio of the results greatly depend on the "filter sequence(s)" that
+#              are used, and also the number of terms available for each sequence in the stripped.gz data file.
+#              For sequence A101296 the s/n ratio is quite good, for A295300 much less so.
+#              Also, in many cases what is shown as "<=>" relation is actually "=>" relation, or no relation at all,
+#              because the short beginnings of the sequences are not enough for telling the difference.
+#
+#              In any case, in the grand scheme of things, the purpose of this script is just to preselect
+#              the sequences for which the b-files will need to be created (if not in OEIS already), after which
+#              the real tests can be done with much larger amount of data, resulting much better s/n ratio (hopefully!)
+#              than with this simple Python script.
+#              See e.g., https://github.com/karttu/OEIS-Djinn/blob/master/src/OEIS-Djinn-on-SQL-find-links.rkt
+#              for some development.
+#
 
 import os
 import re
@@ -59,7 +74,7 @@ singleton_classes_also = True # Also matches with only singleton equivalence cla
 def main():
   if(len(sys.argv) > 1):
     if("--help" == sys.argv[1]):
-      sys.stdout.write("Usage: " + sys.argv[0] + "\n   For ordinary usage involving stripped and names downloaded from https://oeis.org/wiki/Welcome#Compressed_Versions\n\n")
+      sys.stdout.write("Usage: " + sys.argv[0] + "\n   For ordinary usage involving stripped and names downloaded from https://oeis.org/wiki/Welcome#Compressed_Versions start without any arguments.\n\n")
       sys.stdout.write("Usage: " + sys.argv[0] + " bfile1 bfile2 ... bfilen\n    Given n text-files in b-file format, output a report whether each distinct pair A, B seems to satisfy A => B or not.\n")
       sys.stdout.write("\nFor example, by giving file http://oeis.org/A101296/b101296.txt as one of the arguments, it can be immediately seen if the sequences for other b-files certainly are not dependent on prime signature only.\n")
       exit(1)
@@ -81,7 +96,7 @@ def main():
         print result
       print "---"
       print ""
-  else:
+  else: # No args
     if((not os.path.exists(datafile)) or (os.path.exists(org_datafile) and (os.stat(datafile).st_mtime < os.stat(org_datafile).st_mtime))):
       if(not os.path.exists(datafile)): sys.stdout.write("File " + datafile + " does not exist, preparing it from " + org_datafile + "\n")
       else: sys.stdout.write("File " + datafile + " exists, but is out of date, repreparing from " + org_datafile + "\n")
@@ -95,10 +110,140 @@ def main():
     main_loop_over_datafile(selected_anums,datafile,namefile,outputfile,at_least_n_distinct_classes,max_diff_for_two_largest_classes,minlength_for_seq2,minsize_for_the_second_largest_eq_class)
 
 
-outputfile = "./eqout_for_A322974_with_singletons_and_slec2_2019-01-15.txt"
+outputfile = "./eqout_for_A305801_etc_with_singletons_and_slec2_2021-11-14.txt" # This is the file name where the output goes when the script is started without any arguments. It is better to correspond with the A-numbers mentioned in the beginning of the selected_anums structure below:
+
 
 selected_anums = [
-"A322974",
+
+# If multiple A-numbers are given, then the most exclusive should come first, and after each subsequent A-number
+# the "total of X suspected matching sequences were found" count excludes the previous matches. For example, the second
+# count here will be then the cardinality of the {setwise difference matches to A295300 \ matches to A101296}, and
+# the third count will be the cardinality of  the {setwise difference matches to A305801 \ matches to A295300}.
+# NOTE: if this doesn't work as you expect, check that all the active filter Anumbers are found in non-injections.txt
+# If the problem persists (e.g., that file has been cut prematurely), then rm non-injections.txt and run again.
+
+# Here every sequence where a(n) is the function of (i.e. depends only on) the prime signature of n (i.e., only the multiset of the exponents of primes in the prime factorization),
+# should match to the first one, A101296:
+
+"A101296",  # (1113 as of 2021-11-14) A101296 is the RGS-transform of A046523 (Smallest number with same prime signature as n).
+"A305891",  # (+ 974 as of 2021-11-14) Prime signature combined with A007814 (2-adic valuation of n). Sequences like A157226 match to this one, but not to A101296 alone.
+"A305801"   # (+ 4440 = 6528 as of 2021-11-14) All sequences a for which a(p) = constant for all odd primes should match to this one, thus including the above sets and also many, many others.
+
+#
+# "A101296",
+# "A305891"  # (1110+975) "./eqout_for_A305891_with_singletons_and_slec2_2021-11-12.txt"
+#
+# "A305801",
+# "A336855", # ( ) "./eqout_for_A336855_with_singletons_and_slec2_2021-08-29.txt"
+#
+# "A000593", # (85)  "./eqout_for_A000593_with_singletons_and_slec2_2021-08-29.txt"
+#
+# "A007814", # (582)
+# "A130909", # (368)
+# "A305800", # (3925)
+# "A305801", # (1056 = 5931)  "./eqout_for_A305801_sans_mod16_A007814_and_A305800_with_singletons_and_slec2_2020-01-22.txt"
+#
+# "A130909", # (843)
+# "A305800", # (3953)
+# "A305801", # (+ 1135 = 5931)  "./eqout_for_A305801_sans_mod16_and_A305800_with_singletons_and_slec2_2020-01-22.txt"
+#
+# "A007814", # (582)
+# "A305800", # (3935)
+# "A305801", # (+ 1065 = 5582)  "./eqout_for_A305801_sans_mod16_and_A305800_with_singletons_and_slec2_2020-01-22.txt"
+#
+# "A305800", # (4404)
+# "A305801", # (+ 1172 = 5576)  "./eqout_for_A305801_sans_A305800_with_singletons_and_slec2_2020-01-19.txt"
+#
+# "A305800", # (4781)
+# "A305801" # (+ 1381 = 6162)  "./eqout_for_A305801_sans_A305800_with_singletons_and_slec1_2020-01-19.txt"
+#
+#
+# "A331297", # (20)
+# "A331170", # (+ 144 = 164) "./eqout_for_A331170_sans_A331297_with_singletons_and_slec2_2020-01-19.txt"
+#
+# "A331297", # (20)
+# "A331299", # (+ 93 = 113)  "./eqout_for_A331299_sans_A331297_with_singletons_and_slec2_2020-01-19.txt"
+#
+#
+# "A305801", # (6162)
+# "A331304", # (+23 = 6185 with slec1, = 5599 with slec2) (Many good hits from wiseman among the 23) "./eqout_for_A331304_sans_A305801_with_singletons_and_slec1_2020-01-19.txt"
+#
+# "A329608", # (65)  "./eqout_for_A329608_with_singletons_and_slec2_2020-01-18.txt"
+#
+# "A329606", # (73)  "./eqout_for_A329606_with_singletons_and_slec2_2020-01-18.txt"
+#
+# "A331166", # (2419) "./eqout_for_A331166_with_singletons_and_slec2_2020-01-18.txt"
+#
+# "A331167", # (82) "./eqout_for_A331167_with_singletons_and_slec2_2020-01-18.txt"
+#
+# "A331173", # (1305) "./eqout_for_A331173_with_singletons_and_slec2_2020-01-18.txt"
+#
+# "A331280", # (71) "./eqout_for_A331280_with_singletons_and_slec2_2020-01-18.txt"
+#
+# "A331299", # (110) "./eqout_for_A331299_with_singletons_and_slec2_2020-01-18.txt"
+#
+# "A331174", # (109)
+#
+# "A331170", # (163)
+#
+# "A319626", # (782) "./eqout_for_A319626_with_singletons_and_slec2_2019-12-29.txt"
+#
+# "A329900" # (644) "./eqout_for_A329900_with_singletons_and_slec2_2019-12-29.txt"
+#
+# "A329904" #  "./eqout_for_A329904_with_singletons_and_slec2_2019-12-25.txt"
+#
+# "A101296", # (913)
+# "A071364", # (913+37 = 950) "./eqout_for_A071364_sans_A101296_with_singletons_and_slec2_2019-11-20.txt"
+#
+# "A328401", # (114) "./eqout_for_A328401_with_singletons_and_slec2_2019-11-13.txt"
+#
+# "A329381", # (1555) "./eqout_for_A329381_with_singletons_and_slec2_2019-11-13.txt"
+#
+# "A329351" # (306) "./eqout_for_A329351_with_singletons_and_slec2_2019-11-13.txt"
+#
+# "A329345" "./eqout_for_A329345_with_singletons_and_slec2_2019-11-12.txt"
+#
+# "A329048" # (146)  "./eqout_for_A329048_with_singletons_and_slec2_2019-11-12.txt"#
+# "A003415", # (77)
+# "A328767" # (+ 1833 = 1894) "./eqout_for_A328767_sans_A003415_and_with_singletons_and_slec2_2019-10-29.txt"
+#
+# "A000035", # (264)  "./eqout_for_A328765_sans_A000035_and_with_singletons_and_slec2_2019-10-29.txt"
+# "A328765" # (19)
+#
+# "A328314" # ( ) "./eqout_for_A328314_with_singletons_and_slec2_2019-08-25.txt"
+#
+# "A300243" # (1522) "./eqout_for_A300243_with_singletons_and_slec2_2019-08-25.txt"
+# 
+# "A323888" # (707) "./eqout_for_A323888_with_singletons_and_slec2_2019-08-25.txt"
+#
+# "A326192" # (557) "./eqout_for_A326192_with_singletons_and_slec2_2019-08-25.txt"
+#
+# "A326201", # (378)  "./eqout_for_A326201_with_singletons_and_slec2_2019-08-22.txt"
+#
+# "A326202", # (115)  "./eqout_for_A326202_with_singletons_and_slec2_2019-08-22.txt"
+#
+# "A278534",
+#
+# "A324399", # (84)
+# "A324401", # (1669, 1753) "./eqout_for_A324401_sans_A324399_with_singletons_and_slec2_2019-04-28.txt"
+#
+# "A324400", # (8306)  "./eqout_for_A324400_with_singletons_and_slec2_2019-03-06.txt"
+#
+# "A286605", # (113)
+# "A324203", # (348, 461) "./eqout_for_A324203_with_singletons_and_slec2_2019-02-21.txt"
+#
+# "A324197", # (313) "./eqout_for_A324197_with_singletons_and_slec2_2019-02-21.txt"
+# "A324196", # (594) "./eqout_for_A324196_with_singletons_and_slec2_2019-02-21.txt"
+#
+# "A324181", # (299)  "./eqout_for_A324181_with_singletons_and_slec2_2019-02-21.txt"
+#
+# "A300827", # (1087)  "./eqout_for_A300827_with_singletons_and_slec2_2019-02-21.txt"
+#
+# "A002487", # (56)
+# "A286622", # (189)
+# "A323889", # (65 , 310)  "./eqout_for_A323889_sans_others_with_singletons_and_slec2_2019-02-13.txt"
+#
+# "A322974", # "./eqout_for_A322974_with_singletons_and_slec2_2019-01-15.txt"
 #
 # "A007814", # (576)
 # "A010878", # (223) mod 9
