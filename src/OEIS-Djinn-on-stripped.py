@@ -52,6 +52,8 @@
 #              See e.g., https://github.com/karttu/OEIS-Djinn/blob/master/src/OEIS-Djinn-on-SQL-find-links.rkt
 #              for some development.
 #
+# 2021-11-24   Added the list my_slec1_filters for including some of the special filters in the results, even if slec is set to 2.
+#
 
 import os
 import re
@@ -66,9 +68,14 @@ namefile = "./names"
 at_least_n_distinct_classes = 2
 max_diff_for_two_largest_classes = 150 # 
 minlength_for_seq2 = 30
-minsize_for_the_second_largest_eq_class = 2
+minsize_for_the_second_largest_eq_class = 2 # Usually best to be at least 2.
 
 singleton_classes_also = True # Also matches with only singleton equivalence classes are considered
+
+# This list contains all such "filter sequences" whose second largest eq.class is 1 (that is, sequences that have just one big eq.class, and all the rest are singletons),
+# but which are seqs I still want to be included in the results, even if minsize_for_the_second_largest_eq_class above is set to value larger than 1:
+my_slec1_filters = ["A305800", "A305801", "A305890", "A305900", "A305976", "A305979", "A305980", "A319701", "A319702", "A320014", "A322810", "A326201", "A326202", "A326203", "A346488"]
+
 
 
 def main():
@@ -110,7 +117,9 @@ def main():
     main_loop_over_datafile(selected_anums,datafile,namefile,outputfile,at_least_n_distinct_classes,max_diff_for_two_largest_classes,minlength_for_seq2,minsize_for_the_second_largest_eq_class)
 
 
-outputfile = "./eqout_for_A305801_etc_with_singletons_and_slec2_2021-11-14.txt" # This is the file name where the output goes when the script is started without any arguments. It is better to correspond with the A-numbers mentioned in the beginning of the selected_anums structure below:
+outputfile = "./eqout_for_A305900_etc_with_singletons_and_slec2_2021-11-24.txt" # This is the file name where the output goes when the script is started without any arguments. It is better to correspond with the A-numbers mentioned in the beginning of the selected_anums structure below:
+
+
 
 
 selected_anums = [
@@ -125,10 +134,11 @@ selected_anums = [
 # Here every sequence where a(n) is the function of (i.e. depends only on) the prime signature of n (i.e., only the multiset of the exponents of primes in the prime factorization),
 # should match to the first one, A101296:
 
-"A101296",  # (1113 as of 2021-11-14) A101296 is the RGS-transform of A046523 (Smallest number with same prime signature as n).
-"A305891",  # (+ 974 as of 2021-11-14) Prime signature combined with A007814 (2-adic valuation of n). Sequences like A157226 match to this one, but not to A101296 alone.
-"A305801"   # (+ 4440 = 6528 as of 2021-11-14) All sequences a for which a(p) = constant for all odd primes should match to this one, thus including the above sets and also many, many others.
-
+# "A101296",  # (1113 as of 2021-11-14) A101296 is the RGS-transform of A046523 (Smallest number with same prime signature as n).
+# "A305891",  # (+ 974 as of 2021-11-14) Prime signature combined with A007814 (2-adic valuation of n). Sequences like A157226 match to this one, but not to A101296 alone.
+# "A305801"   # (+ 4440 = 6528 as of 2021-11-14) All sequences a for which a(p) = constant for all odd primes should match to this one, thus including the above sets and also many, many others.
+#
+"A305900", # (8155 as of 20201-11-24, with slec=1, 7455 with slec=2 but with 15 special filter seqs given in my_slec1_filters still included)
 #
 # "A101296",
 # "A305891"  # (1110+975) "./eqout_for_A305891_with_singletons_and_slec2_2021-11-12.txt"
@@ -1389,7 +1399,7 @@ def add_seq_to(possibly_matching_seqs,seq2,minlength_for_seq2,anum,name_used,seq
     (freq2val,freq2indices) = seq2invs_sorted[1]
     sizediff_of_two_largest = len(freq1indices) - len(freq2indices)
 
-    if(len(freq2indices) < minsize_for_the_second_largest_eq_class): return
+    if((len(freq2indices) < minsize_for_the_second_largest_eq_class) and not(anum in my_slec1_filters)): return
 
 
     if(sizediff_of_two_largest <= max_diff_for_two_largest_classes):
