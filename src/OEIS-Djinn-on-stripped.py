@@ -1,59 +1,3 @@
-#!/usr/bin/python
-
-#
-# oeis-djinn-on-stripped (the previous version of this program was known with name eq_class_match_test.py)
-#                        -- Simple program to test equivalence class matching against OEIS
-#                           data in "stripped" -file, written by Antti Karttunen
-#                           (firstname.surname@gmail.com) Nov 10 - Nov 11 2016, based on
-#                           his earlier Python-scripts (permchek.py, oeischek.py)
-#
-# Please feel free to develop these ideas (or this script) in the spirit of OEIS Contributor's License:
-#   https://oeis.org/wiki/The_OEIS_Contributor%27s_License_Agreement
-#
-# Should run also in cloud.sagemath.com
-#
-# Last edited 2017-08-25 by Antti Karttunen
-
-# 2017-05-19   Added the check for the minimum size of the second largest eq.class of the matching sequence,
-#              which allows us to prune off many false positives that are "almost injective", e.g.,
-#              sequences that obtain unique values in the midst of "background sea" of 0's or 1's.
-#
-
-# 2017-08-10   Use new function get_nonsingleton_inverses instead of get_inverses
-#              This should leave off a large amount of "true positive, but irrelevant" matches
-#              for a certain kind of filtering sequences like A014682.
-#
-
-# 2017-08-24   Implemented setwise difference of matched sets (changed the main looping order also).
-#              Now count_almost_injections_from_stripped_data also filters off monotonic non-injections.
-#
-
-#
-# 2018-10-09   Added a rudimentary main routine for sanity's sake. Still needs some on-the-fly editing
-#              for running with different parameters and inputs.
-#
-#
-# 2018-11-08   Corrected a nasty bug in read_bfile_as_a_list which botched the reading of b-files with negative terms.
-#
-# 2019-02-09   And again corrected the very same function, so now the negative terms really are read as negative numbers.
-#
-# 2021-11-14   Added "usage notes" to the beginning of list selected_anums, when used without any arguments.
-#              (Grep for global variable outputfile below. To get help for argumented usage, start with option --help).
-#              PLEASE note that the signal / noise ratio of the results greatly depend on the "filter sequence(s)" that
-#              are used, and also the number of terms available for each sequence in the stripped.gz data file.
-#              For sequence A101296 the s/n ratio is quite good, for A295300 much less so.
-#              Also, in many cases what is shown as "<=>" relation is actually "=>" relation, or no relation at all,
-#              because the short beginnings of the sequences are not enough for telling the difference.
-#
-#              In any case, in the grand scheme of things, the purpose of this script is just to preselect
-#              the sequences for which the b-files will need to be created (if not in OEIS already), after which
-#              the real tests can be done with much larger amount of data, resulting much better s/n ratio (hopefully!)
-#              than with this simple Python script.
-#              See e.g., https://github.com/karttu/OEIS-Djinn/blob/master/src/OEIS-Djinn-on-SQL-find-links.rkt
-#              for some development.
-#
-# 2021-11-24   Added the list my_slec1_filters for including some of the special filters in the results, even if slec is set to 2.
-#
 
 import os
 import re
@@ -62,7 +6,6 @@ import sys
 org_datafile = "./stripped"
 datafile = "./non-injections.txt"
 namefile = "./names"
-
 
 at_least_n_distinct_classes = 2
 max_diff_for_two_largest_classes = 150 # 
@@ -73,6 +16,8 @@ singleton_classes_also = True # If true, then also matches with only singleton e
 
 
 def main():
+  bfiles = read_bfilelist("bfilelist")
+
   if(len(sys.argv) > 1):
     if("--help" == sys.argv[1]):
       sys.stdout.write("Usage: " + sys.argv[0] + "\n   For ordinary usage involving stripped and names downloaded from https://oeis.org/wiki/Welcome#Compressed_Versions start without any arguments.\n\n")
@@ -108,7 +53,7 @@ def main():
       
       count_almost_injections_from_stripped_data(org_datafile,datafile,8)
 
-    main_loop_over_datafile(selected_anums,datafile,namefile,outputfile,at_least_n_distinct_classes,max_diff_for_two_largest_classes,minlength_for_seq2,minsize_for_the_second_largest_eq_class)
+    main_loop_over_datafile(selected_anums,datafile,namefile,outputfile,at_least_n_distinct_classes,max_diff_for_two_largest_classes,minlength_for_seq2,minsize_for_the_second_largest_eq_class,bfiles)
 
 # main ends here.
     
@@ -118,7 +63,7 @@ def main():
 my_slec1_filters = ["A305800", "A305801", "A305890", "A305900", "A305976", "A305979", "A305980", "A319701", "A319702", "A320014", "A322810", "A326201", "A326202", "A326203", "A346488"]
 
 
-outputfile = "./eqout_for_A305900_sans_mod16_A007814_and_A305800_with_singletons_and_slec2_2021-11-25.txt" # This is the file name where the output goes when the script is started without any arguments. It is better to correspond with the A-numbers mentioned in the beginning of the selected_anums structure below:
+outputfile = "./output_for_A305900_etc_with_singletons_and_slec2_2021-11-25.txt" # This is the file name where the output goes when the script is started without any arguments. It is better to correspond with the A-numbers mentioned in the beginning of the selected_anums structure below:
 
 
 
@@ -1468,7 +1413,7 @@ def read_bfile_as_a_list(filename):
 
 
 
-def eq_class_search_from_stripped_data(infilename_for_data,infilename_for_names,outfilename,seqname,seq1,except_not_these,minlength_for_seq2,at_least_n_distinct_classes,max_diff_for_two_largest_classes,minsize_for_the_second_largest_eq_class):
+def eq_class_search_from_stripped_data(infilename_for_data,infilename_for_names,outfilename,seqname,seq1,except_not_these,minlength_for_seq2,at_least_n_distinct_classes,max_diff_for_two_largest_classes,minsize_for_the_second_largest_eq_class,bfiles):
     '''Opens "infilename_for_data" for reading and writes results to "outfilename".'''
     outfp = open(outfilename,'a')
 
@@ -1547,6 +1492,8 @@ def eq_class_search_from_stripped_data(infilename_for_data,infilename_for_names,
 
     for match in possibly_matching_seqs:
       (anum,name,case,num_of_eq_classes,sizediff_of_two_largest,size_of_second_largest_eq_class) = match
+      if(anum in bfiles): outfp.write("+ ")
+      else: outfp.write("- ")
       outfp.write(seqname)
       outfp.write(" " + case + " (" + str(num_of_eq_classes) + "," + str(sizediff_of_two_largest) + "," + str(size_of_second_largest_eq_class) + ") " + anum + " " + name)
       suspected_cases += 1
@@ -2007,7 +1954,7 @@ def search_single_bit_change_permutations_from_stripped_data(infilename_for_data
 # search_single_bit_change_permutations_from_stripped_data("./nonmonotonic-injections.txt",namefile,"./suspected-single-bit-change-permutations.txt",[])
 
 
-def main_loop_over_datafile(selected_anums,datafile,namefile,outfilename,at_least_n_distinct_classes,max_diff_for_two_largest_classes,minlength_for_seq2,minsize_for_the_second_largest_eq_class):
+def main_loop_over_datafile(selected_anums,datafile,namefile,outfilename,at_least_n_distinct_classes,max_diff_for_two_largest_classes,minlength_for_seq2,minsize_for_the_second_largest_eq_class,bfiles):
     '''Opens "datefilename" for reading in the main loop and writes results to "outfilename".'''
 
 
@@ -2032,7 +1979,7 @@ def main_loop_over_datafile(selected_anums,datafile,namefile,outfilename,at_leas
     
           terms = map(int,contents.replace(',',' ').split())
   
-          matches = eq_class_search_from_stripped_data(datafile,namefile,outfilename,anum,terms,except_not_these,minlength_for_seq2,at_least_n_distinct_classes,max_diff_for_two_largest_classes,minsize_for_the_second_largest_eq_class)
+          matches = eq_class_search_from_stripped_data(datafile,namefile,outfilename,anum,terms,except_not_these,minlength_for_seq2,at_least_n_distinct_classes,max_diff_for_two_largest_classes,minsize_for_the_second_largest_eq_class,bfiles)
           tot_suspected_cases = tot_suspected_cases + len(matches)
 
           except_not_these = except_not_these + matches
