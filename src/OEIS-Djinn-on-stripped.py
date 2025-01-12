@@ -10,9 +10,9 @@
 # Please feel free to develop these ideas (or this script) in the spirit of OEIS Contributor's License:
 #   https://oeis.org/wiki/The_OEIS_Contributor%27s_License_Agreement
 #
-# Should run also in cloud.sagemath.com
+# Should run also in cloud.sagemath.com (now cocalc.com)
 #
-# Last edited 2017-08-25 by Antti Karttunen
+# Last edited 2025-01-12 by Antti Karttunen
 
 # 2017-05-19   Added the check for the minimum size of the second largest eq.class of the matching sequence,
 #              which allows us to prune off many false positives that are "almost injective", e.g.,
@@ -58,6 +58,8 @@
 #              the beginning of each output line.
 #
 # 2021-11-28   Now also counts the total bfile size used by each set of sequenced matched to. Cleaned off lots of commented out old test code.
+#
+# 2025-01-12   Added A379000 to my_slec1_filters list.
 #
 
 import os
@@ -121,11 +123,10 @@ def main():
 
 # This list contains all such "filter sequences" whose second largest eq.class is 1 (that is, sequences that have just one big eq.class, and all the rest are singletons),
 # but which are seqs I still want to be included in the results, even if minsize_for_the_second_largest_eq_class above is set to value larger than 1:
-my_slec1_filters = ["A305800", "A305801", "A305890", "A305900", "A305976", "A305979", "A305980", "A319701", "A319702", "A320014", "A322810", "A326201", "A326202", "A326203", "A346488"]
+my_slec1_filters = ["A305800", "A305801", "A305890", "A305900", "A305976", "A305979", "A305980", "A319701", "A319702", "A320014", "A322810", "A326201", "A326202", "A326203", "A346488", "A379000"]
 
 
-outputfile = "./output_for_A305900_etc_with_singletons_and_slec2_2021-11-28.txt" # This is the file name where the output goes when the script is started without any arguments. It is better to correspond with the A-numbers mentioned in the beginning of the selected_anums structure below:
-
+outputfile = "./output_for_A379000_with_singletons_and_slec2_2025-01-12.txt" # This is the file name where the output goes when the script is started without any arguments. It is better to correspond with the A-numbers mentioned in the beginning of the selected_anums structure below:
 
 
 
@@ -138,17 +139,22 @@ selected_anums = [
 # NOTE: if this doesn't work as you expect, check that all the active filter Anumbers are found in non-injections.txt
 # If the problem persists (e.g., that file has been cut prematurely), then rm non-injections.txt and run again.
 #
-# Comments indicate the situation as of Nov 28 2021.
+# Comments indicate the situation as of Jan 12 2025.
 
-"A007814", # (585,  407 without b-file, don't care about them) the 2-adic valuation, used to filter chaff off from the results of later filters
-"A130909", # (371,  275 without b-file, don't care about them) Simple periodic sequence (n mod 16), used just to filter chaff (also all period 2, 4 and 8 seqs) of from the results of filters below
-"A101296", # (1112, 272 still without a b-file) All sequences that depend only the prime signature of n. (A101296 is the RGS-transform of A046523, Smallest number with same prime signature as n).
-"A305800", # (3689, 788 without a b-file)  All sequences x for which x(p) = constant for all primes (including 2).
-"A305801", # (1191, 220 without a b-file)  All sequences x for which x(p) = constant for all odd primes should match to this one, thus including the above sets and also many, many others.
-"A305900", # (865,  434 without a b-file). Total 7813 matches.
+"A007814", # (593,  400 without b-file, don't care about them) the 2-adic valuation, used to filter chaff off from the results of later filters
+"A130909", # (376,  274 without b-file, don't care about them) Simple periodic sequence (n mod 16), used just to filter chaff (also all period 2, 4 and 8 seqs) of from the results of filters below
+"A010881", # (664,  505) n mod 12, we are not interested about the period-3 or period-6 or period-12 sequences.
+"A101296", # (1443, 288 still without a b-file) All sequences that depend only the prime signature of n. (A101296 is the RGS-transform of A046523, Smallest number with same prime signature as n).
+"A305800", # (4626, 814 without a b-file)  All sequences x for which x(p) = constant for all primes (including 2).
+"A305801", # (1432, 184 without a b-file)  All sequences x for which x(p) = constant for all odd primes should match to this one, thus including the above sets and also many, many others.
+"A322026", # (46,   6 without a b-file)
+"A305900", # (717,  188 without a b-file).
+"A379000"  # (350,  163 without a b-file).  Total 10247 matches.
 
-# "A003602" # (1396 susp. matches, and 467 without b-file)
+]
 
+selected_anums_for_A003602 = [
+  "A003602" # (1635 suspected matches, and 427 without b-file, as on Jan 12 2025)
 ]
 
 selected_anums_some2 = [
