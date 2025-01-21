@@ -64,6 +64,7 @@
 #
 # 2025-01-21   Ported the code to Python 3. It's funny those clowns cannot make anymore programming languages
 #              that would survive more than a quarter of century...
+#              Finished the job of changing map(...) to list(map(...)), hopefully!
 #
 #
 
@@ -960,7 +961,7 @@ def count_almost_injections_from_stripped_data(filename,outfilename,skipnfirst):
 
         contents = m.string[m.end(1)+1:-1] # The rest, sans newline
   
-        terms = map(int,contents.replace(',',' ').split())
+        terms = list(map(int,contents.replace(',',' ').split()))
 
         if(len(terms) <= skipnfirst):
           too_shorts = 1+too_shorts
@@ -1036,7 +1037,7 @@ def count_nonmonotonic_injections_from_stripped_data(filename,outfilename,skipnf
 
         contents = m.string[m.end(1)+1:-1] # The rest, sans newline
   
-        terms = map(int,contents.replace(',',' ').split())
+        terms = list(map(int,contents.replace(',',' ').split()))
 
         if(len(terms) <= length_at_least):
           too_shorts = 1+too_shorts
@@ -1121,7 +1122,7 @@ def search_mult_div_permutations_from_stripped_data(infilename_for_data,infilena
 
         contents = m.string[m.end(1)+1:-1] # The rest, sans newline
   
-        terms = map(int,contents.replace(',',' ').split())
+        terms = list(map(int,contents.replace(',',' ').split()))
 
         prevterm = 1
         satisfies_the_condition = 1
@@ -1191,7 +1192,7 @@ def search_single_bit_change_permutations_from_stripped_data(infilename_for_data
 
         contents = m.string[m.end(1)+1:-1] # The rest, sans newline
   
-        terms = map(int,contents.replace(',',' ').split())
+        terms = list(map(int,contents.replace(',',' ').split()))
 
         prevterm = terms[0]
         satisfies_the_condition = 1
