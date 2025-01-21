@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 #
 # oeis-djinn-on-stripped (the previous version of this program was known with name eq_class_match_test.py)
@@ -60,11 +60,17 @@
 # 2021-11-28   Now also counts the total bfile size used by each set of sequenced matched to. Cleaned off lots of commented out old test code.
 #
 # 2025-01-12   Added A379000 to my_slec1_filters list.
+# 2025-01-19   Added A127648 to my_slec1_filters list.
+#
+# 2025-01-21   Ported the code to Python 3. It's funny those clowns cannot make anymore programming languages
+#              that would survive more than a quarter of century...
+#
 #
 
 import os
 import re
 import sys
+import functools
 
 org_datafile = "./stripped"
 datafile = "./non-injections.txt"
@@ -102,9 +108,9 @@ def main():
         sys.stdout.write("\nIt seems that " + filenames[i] + " (" + str(len(seqs[i])) + " terms) => " + filenames[j]  + " (" + str(len(seqs[j])) + " terms) is: ")
         result = has_coarser_eq_classes_with_threshold(seqs[j],off,inverses[i],at_least_n_distinct_classes)
         if(result): result = (result >= at_least_n_distinct_classes)
-        print result
-      print "---"
-      print ""
+        print(result)
+      print("---")
+      print("")
   else: # No args
     if((not os.path.exists(datafile)) or (os.path.exists(org_datafile) and (os.stat(datafile).st_mtime < os.stat(org_datafile).st_mtime))):
       if(not os.path.exists(datafile)): sys.stdout.write("File " + datafile + " does not exist, preparing it from " + org_datafile + "\n")
@@ -123,10 +129,10 @@ def main():
 
 # This list contains all such "filter sequences" whose second largest eq.class is 1 (that is, sequences that have just one big eq.class, and all the rest are singletons),
 # but which are seqs I still want to be included in the results, even if minsize_for_the_second_largest_eq_class above is set to value larger than 1:
-my_slec1_filters = ["A305800", "A305801", "A305890", "A305900", "A305976", "A305979", "A305980", "A319701", "A319702", "A320014", "A322810", "A326201", "A326202", "A326203", "A346488", "A379000"]
+my_slec1_filters = ["A127648", "A305800", "A305801", "A305890", "A305900", "A305976", "A305979", "A305980", "A319701", "A319702", "A320014", "A322810", "A326201", "A326202", "A326203", "A346488", "A379000"]
 
 
-outputfile = "./output_for_A379000_with_singletons_and_slec2_2025-01-12.txt" # This is the file name where the output goes when the script is started without any arguments. It is better to correspond with the A-numbers mentioned in the beginning of the selected_anums structure below:
+outputfile = "./output_for_A379000_with_singletons_and_slec2_2025-01-21.txt" # This is the file name where the output goes when the script is started without any arguments. It is better to correspond with the A-numbers mentioned in the beginning of the selected_anums structure below:
 
 
 
@@ -139,17 +145,25 @@ selected_anums = [
 # NOTE: if this doesn't work as you expect, check that all the active filter Anumbers are found in non-injections.txt
 # If the problem persists (e.g., that file has been cut prematurely), then rm non-injections.txt and run again.
 #
-# Comments indicate the situation as of Jan 12 2025.
+# Comments indicate the situation as of Jan 21 2025.
 
 "A007814", # (593,  400 without b-file, don't care about them) the 2-adic valuation, used to filter chaff off from the results of later filters
 "A130909", # (376,  274 without b-file, don't care about them) Simple periodic sequence (n mod 16), used just to filter chaff (also all period 2, 4 and 8 seqs) of from the results of filters below
 "A010881", # (664,  505) n mod 12, we are not interested about the period-3 or period-6 or period-12 sequences.
-"A101296", # (1443, 288 still without a b-file) All sequences that depend only the prime signature of n. (A101296 is the RGS-transform of A046523, Smallest number with same prime signature as n).
-"A305800", # (4626, 814 without a b-file)  All sequences x for which x(p) = constant for all primes (including 2).
-"A305801", # (1432, 184 without a b-file)  All sequences x for which x(p) = constant for all odd primes should match to this one, thus including the above sets and also many, many others.
+"A101296", # (1443, 286 still without a b-file) All sequences that depend only the prime signature of n. (A101296 is the RGS-transform of A046523, Smallest number with same prime signature as n).
+"A378601", # 43/4
+"A378602", # 90/10
+"A378603", # 7/0
+"A378604", # 2/0
+"A378605", # 231/54
+"A305800", # (4264, 722 without a b-file)  All sequences x for which x(p) = constant for all primes (including 2).
+"A305801", # (1434, 181 without a b-file)  All sequences x for which x(p) = constant for all odd primes should match to this one, thus including the above sets and also many, many others.
 "A322026", # (46,   6 without a b-file)
-"A305900", # (717,  188 without a b-file).
-"A379000"  # (350,  163 without a b-file).  Total 10247 matches.
+"A127648", # 34/3, "triangularizations", triangles with nonzero terms only on the leading or trailing diagonal.
+"A305900", # (686,  117 without a b-file).
+"A379005", # 64/36
+"A379001", # 39/19
+"A379000"  # (247,  100 without a b-file).  Total 10251 matches, 7429 with a real b-file (not synthesized).
 
 ]
 
@@ -660,7 +674,7 @@ def has_coarser_eq_classes_with_threshold(seq1,off,inverses_of_seq2,at_least_n_d
           first_inverses_in_seq1[e] = 1
           distinct_classes = distinct_classes + 1
 
-      elif seq1[k-off] <> e: # found that seq1 obtains a different value at some point in the same e.c. of seq2,
+      elif seq1[k-off] != e: # found that seq1 obtains a different value at some point in the same e.c. of seq2,
         return(False)        # thus their equivalence classes do not match, and return false immediately.
 
 
@@ -694,7 +708,7 @@ def read_bfilelist(filename):
 
   bfiles = {}
 
-  for line in infp.xreadlines(): 
+  for line in infp.readlines(): # was xreadlines in Python2 
     m = linepat.match(line)
     if(m):
       size  = int(m.group(1)) #
@@ -768,10 +782,10 @@ def add_seq_to(possibly_matching_seqs,seq2,minlength_for_seq2,anum,name_used,seq
     if(has_coarser_eq_classes_with_threshold(seq1,off,seq2inverses,at_least_n_distinct_classes)):
       case = "<=>"
 
-    seq2invs_sorted = seq2inverses.items()
+    seq2invs_sorted = list(seq2inverses.items())
 #   if(len(seq2invs_sorted) < 2): return
 
-    seq2invs_sorted.sort(sort_eq_classes_by_size)
+    seq2invs_sorted.sort(key=functools.cmp_to_key(sort_eq_classes_by_size)) # Python3 "fix"
     (freq1val,freq1indices) = seq2invs_sorted[0]
     (freq2val,freq2indices) = seq2invs_sorted[1]
     sizediff_of_two_largest = len(freq1indices) - len(freq2indices)
@@ -798,7 +812,7 @@ def read_bfile_as_a_list(filename):
 
   terms = []
 
-  for line in infp.xreadlines(): 
+  for line in infp.readlines(): # was xreadlines in Python2 
     m = linepat.match(line)
     if(m):
       ind  = int(m.group(1)) #
@@ -836,8 +850,8 @@ def eq_class_search_from_stripped_data(infilename_for_data,infilename_for_names,
     at_least_n_distinct_classes = min(at_least_n_distinct_classes,len(seq1inverses.items()))
 
 
-    seq1invs_sorted = seq1inverses.items()
-    seq1invs_sorted.sort(sort_eq_classes_by_size)
+    seq1invs_sorted = list(seq1inverses.items())
+    seq1invs_sorted.sort(key=functools.cmp_to_key(sort_eq_classes_by_size)) # Python3 "fix"
     (freq1val,freq1indices) = seq1invs_sorted[0]
     (freq2val,freq2indices) = seq1invs_sorted[1]
     seq1_sizediff_of_two_largest = len(freq1indices) - len(freq2indices)
@@ -852,7 +866,7 @@ def eq_class_search_from_stripped_data(infilename_for_data,infilename_for_names,
     infp = open(infilename_for_data,'r')
     infp2 = open(infilename_for_names,'r')
 
-    for line in infp.xreadlines(): 
+    for line in infp.readlines(): # was xreadlines in Python2 
       m = linepat.match(line)
 
       if(m):
@@ -875,7 +889,7 @@ def eq_class_search_from_stripped_data(infilename_for_data,infilename_for_names,
 
         contents = m.string[m.end(1)+1:-1] # The rest, sans newline
   
-        seq2 = map(int,contents.replace(',',' ').split())
+        seq2 = list(map(int,contents.replace(',',' ').split())) # list around map required by Python3
 
         add_seq_to(possibly_matching_seqs,rest(seq2),minlength_for_seq2,anum,name_used,seq1,seq1inverses,seq1_sizediff_of_two_largest,at_least_n_distinct_classes,max_diff_for_two_largest_classes,minsize_for_the_second_largest_eq_class)
 
@@ -888,7 +902,8 @@ def eq_class_search_from_stripped_data(infilename_for_data,infilename_for_names,
 # End of loop:
 
 
-    possibly_matching_seqs.sort(sortseqsV1)
+    possibly_matching_seqs.sort(key=functools.cmp_to_key(sortseqsV1)) # Python3 "fix"
+
 
     for match in possibly_matching_seqs:
       (anum,name,case,num_of_eq_classes,sizediff_of_two_largest,size_of_second_largest_eq_class) = match
@@ -935,7 +950,7 @@ def count_almost_injections_from_stripped_data(filename,outfilename,skipnfirst):
     sys.stdout.write("--- Opening " + filename + " ---\n")
     infp = open(filename,'r')
 
-    for line in infp.xreadlines(): 
+    for line in infp.readlines(): # was xreadlines in Python2 
       m = linepat.match(line)
       if(m):
         anum  = m.group(1) #
@@ -1011,7 +1026,7 @@ def count_nonmonotonic_injections_from_stripped_data(filename,outfilename,skipnf
     sys.stdout.write("--- Opening " + filename + " ---\n")
     infp = open(filename,'r')
 
-    for line in infp.xreadlines(): 
+    for line in infp.readlines(): # was xreadlines in Python2 
       m = linepat.match(line)
       if(m):
         anum  = m.group(1) #
@@ -1084,7 +1099,7 @@ def search_mult_div_permutations_from_stripped_data(infilename_for_data,infilena
 
     suspected_cases = 0
 
-    for line in infp.xreadlines(): 
+    for line in infp.readlines(): # was xreadlines in Python2 
       m = linepat.match(line)
 
       if(m):
@@ -1154,7 +1169,7 @@ def search_single_bit_change_permutations_from_stripped_data(infilename_for_data
 
     suspected_cases = 0
 
-    for line in infp.xreadlines(): 
+    for line in infp.readlines(): # was xreadlines in Python2 
       m = linepat.match(line)
 
       if(m):
@@ -1225,14 +1240,14 @@ def main_loop_over_datafile(selected_anums,datafile,namefile,outfilename,at_leas
       sys.stdout.write("--- Opening " + datafile + " ---\n")
       infp = open(datafile,'r')
   
-      for line in infp.xreadlines(): 
+      for line in infp.readlines(): # was xreadlines in Python2 
         m = linepat.match(line)
         if(m):
           if(anum != m.group(1)): continue
   
           contents = m.string[m.end(1)+1:-1] # The rest, sans newline
     
-          terms = map(int,contents.replace(',',' ').split())
+          terms = list(map(int,contents.replace(',',' ').split())) # list around map required by Python3
   
           matches = eq_class_search_from_stripped_data(datafile,namefile,outfilename,anum,terms,except_not_these,minlength_for_seq2,at_least_n_distinct_classes,max_diff_for_two_largest_classes,minsize_for_the_second_largest_eq_class,bfiles)
           tot_suspected_cases += len(matches)
