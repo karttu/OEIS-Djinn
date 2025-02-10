@@ -71,7 +71,7 @@
  (display (format "~nA~a --> Scanning b-file ~a~n"(Anum->str Anumber) infile))
   (call-with-input-file infile
     (lambda (inport)
-        (let loop ((first_line_read? #f) (synthesized? #f) (prev_n #f) (first_n #f) (max_absval #f))
+        (let loop ((first_line_read? #f) (synthesized? #f) (first_n #f) (prev_n #f) (max_absval #f))
           (let ((line (read-line inport)))
              (cond ((eof-object? line)
                       (if (not first_n)
@@ -95,6 +95,9 @@
                         )
                       )
                    )
+
+                   ((zero? (string-length line)) (loop #t synthesized? first_n prev_n max_absval)) ;; Skip empty lines.
+
 ;; Check for things like these on the very first line:
 ;; # Terms 1 - 100000 in https://oeis.org/A300385/a300385.txt
 ;; # Terms 1 - 100000 in https://oeis.org/A309891/a309891_1.txt
@@ -127,9 +130,7 @@
                       )
                    )
 
-                   ((or (zero? (string-length line))      ;; Skip empty lines.
-                        (equal? (string-ref line 0) #\#)  ;; And also the comment lines.
-                    )
+                   ((equal? (string-ref line 0) #\#) ;; Skip any other comment lines.
                       (loop #t synthesized? first_n prev_n max_absval)
                    )
                    (else
@@ -165,9 +166,10 @@
                                      )
                                  )
                                  (else
-                                     (loop #t synthesized? n_in_file
+                                     (loop #t synthesized?
                                            (or first_n n_in_file)
-                                           (if (or (not max_absval) (> (abs an_in_file) max_absval)) an_in_file max_absval)
+                                           n_in_file
+                                           (if (or (not max_absval) (> (abs an_in_file) max_absval)) (abs an_in_file) max_absval)
                                      )
                                  )
                            )
@@ -352,7 +354,7 @@
 )
 
 ;; To upload a single file, do something like:
-;; (store-b-file-to-database djinn-c 248955 "C:/Users/karttu/A/matikka/OEIS-Djinn/bfiles-for-A101296/b248955.txt" "2017-12-02" *MAX-ABSVAL-FOR-BIGINTS*)
+;; (store-b-file-to-database djinn-c 248955 "./Djinn-work/bfiles-for-A101296/b248955.txt" (current-seconds) *MAX-ABSVAL-FOR-BIGINTS*)
 
 ;; To upload all b-files from a certain directory, do something like:
 ;; (upload-bfiles-from djinn-c "../bfiles-for-A379000")
@@ -363,18 +365,18 @@
 (upload-bfiles-from djinn-c "./bfiles/")
 
 ;; Some information:
-
-(define n-rows (query-list djinn-c "select count(*) from Aseqs"))
-
-(define Anums-num-of-eclasses (query-rows djinn-c "select Anum, count(distinct Value) from Aseqs GROUP BY Anum"))
-
-
-(define Anumbers (query-rows djinn-c "select distinct Anum from Aseqs"))
-
-(define How-many-Anumbers (query-rows djinn-c "select count(distinct Anum) from Aseqs"))
-
-(define Anumber-and-max-n (query-rows djinn-c "select Anum, max(Nval) from Aseqs GROUP BY Anum"))
-
-(define Aupload-status (query-rows djinn-c "select * from Afileinfo"))
-
+;;
+;; (define n-rows (query-list djinn-c "select count(*) from Aseqs"))
+;; 
+;; (define Anums-num-of-eclasses (query-rows djinn-c "select Anum, count(distinct Value) from Aseqs GROUP BY Anum"))
+;; 
+;; 
+;; (define Anumbers (query-rows djinn-c "select distinct Anum from Aseqs"))
+;; 
+;; (define How-many-Anumbers (query-rows djinn-c "select count(distinct Anum) from Aseqs"))
+;; 
+;; (define Anumber-and-max-n (query-rows djinn-c "select Anum, max(Nval) from Aseqs GROUP BY Anum"))
+;; 
+;; (define Aupload-status (query-rows djinn-c "select * from Afileinfo"))
+;; 
 
