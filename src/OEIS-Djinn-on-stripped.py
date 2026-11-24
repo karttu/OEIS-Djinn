@@ -12,7 +12,7 @@
 #
 # Should run also in cloud.sagemath.com (now cocalc.com)
 #
-# Last edited 2025-01-12 by Antti Karttunen
+# Last edited 2026-11-24 by Antti Karttunen
 
 # 2017-05-19   Added the check for the minimum size of the second largest eq.class of the matching sequence,
 #              which allows us to prune off many false positives that are "almost injective", e.g.,
@@ -130,12 +130,17 @@ def main():
 
 # This list contains all such "filter sequences" whose second largest eq.class is 1 (that is, sequences that have just one big eq.class, and all the rest are singletons),
 # but which are seqs I still want to be included in the results, even if minsize_for_the_second_largest_eq_class above is set to value larger than 1:
-my_slec1_filters = ["A127648", "A305800", "A305801", "A305890", "A305900", "A305976", "A305979", "A305980", "A319701", "A319702", "A320014", "A322810", "A326201", "A326202", "A326203", "A346488", "A379000"]
+# Also sequences like A402578 that I want to include in the results, even though in the data section they seem like to be like that.
+my_slec1_filters = ["A127648", "A305800", "A305801", "A305890", "A305900", "A305976", "A305979", "A305980", "A319701", "A319702", "A320014", "A322810", "A326201", "A326202", "A326203", "A346488", "A379000", "A402578"]
 
 
-outputfile = "./output_for_A379000_with_singletons_and_slec2_2025-01-21.txt" # This is the file name where the output goes when the script is started without any arguments. It is better to correspond with the A-numbers mentioned in the beginning of the selected_anums structure below:
+outputfile = "./output_for_A379000_with_singletons_and_slec2_2026-11-24.txt" # This is the file name where the output goes when the script is started without any arguments. It is better to correspond with the A-numbers mentioned in the beginning of the selected_anums structure below:
 
+selected_anums_A379000_only = [
+  "A379000" # 9519 / 2153 # Hmm... doesn't work so well as one below.
+]
 
+# selected_anums = [ "A389904" ]
 
 selected_anums = [
 
@@ -146,25 +151,38 @@ selected_anums = [
 # NOTE: if this doesn't work as you expect, check that all the active filter Anumbers are found in non-injections.txt
 # If the problem persists (e.g., that file has been cut prematurely), then rm non-injections.txt and run again.
 #
-# Comments indicate the situation as of Jan 21 2025.
+# Comments indicate the situation as of Nov 24 2026, not necessarily most recent.
 
-"A007814", # (593,  400 without b-file, don't care about them) the 2-adic valuation, used to filter chaff off from the results of later filters
-"A130909", # (376,  274 without b-file, don't care about them) Simple periodic sequence (n mod 16), used just to filter chaff (also all period 2, 4 and 8 seqs) of from the results of filters below
-"A010881", # (664,  505) n mod 12, we are not interested about the period-3 or period-6 or period-12 sequences.
-"A101296", # (1443, 286 still without a b-file) All sequences that depend only the prime signature of n. (A101296 is the RGS-transform of A046523, Smallest number with same prime signature as n).
-"A378601", # 43/4
-"A378602", # 90/10
-"A378603", # 7/0
-"A378604", # 2/0
-"A378605", # 231/54
-"A305800", # (4264, 722 without a b-file)  All sequences x for which x(p) = constant for all primes (including 2).
-"A305801", # (1434, 181 without a b-file)  All sequences x for which x(p) = constant for all odd primes should match to this one, thus including the above sets and also many, many others.
-"A322026", # (46,   6 without a b-file)
-"A127648", # 34/3, "triangularizations", triangles with nonzero terms only on the leading or trailing diagonal.
-"A305900", # (686,  117 without a b-file).
-"A379005", # 64/36
-"A379001", # 39/19
-"A379000"  # (247,  100 without a b-file).  Total 10251 matches, 7429 with a real b-file (not synthesized).
+
+"A401721", # 1689 (many false positives, probably)
+"A007814", # 554
+"A130909", # 373
+"A010881", # 652
+"A101296", # 1083
+"A300232", # 381
+"A353560", # 1397
+"A305800", # 2154
+# "A322589", # 
+"A322591", # 57
+"A322592", # 9
+"A305801", # 1444
+"A127648", # 34
+"A379000"  # 1130. Total 10957 matches.
+
+# Old counts from December 2025 I assume:
+# "A007814", # (593,  400 without b-file, don't care about them) the 2-adic valuation, used to filter chaff off from the results of later filters
+# "A130909", # (375,  273 without b-file, don't care about them) Simple periodic sequence (n mod 16), used just to filter chaff (also all period 2, 4 and 8 seqs) of from the results of filters below
+# "A010881", # (664,  505) n mod 12, we are not interested about the period-3 or period-6 or period-12 sequences.
+# "A101296", # (1450, 284 without a b-file) All sequences that depend only the prime signature of n. (A101296 is the RGS-transform of A046523, Smallest number with same prime signature as n).
+# "A300232", # 745/98
+# "A353560", # 1914/278
+# "A305800", # 2036/334 All sequences x for which x(p) = constant for all primes (including 2).
+# # "A322589", # 7/0
+# "A322591", # 56/3
+# "A322592", # 9/1
+# "A305801", # 1374/175 All sequences x for which x(p) = constant for all odd primes should match to this one, thus including the above sets and also many, many others.
+# "A127648", # 34/3, "triangularizations", triangles with nonzero terms only on the leading or trailing diagonal.
+# "A379000"  # 1068/279.  Total 10318 matches, 7685 with a real b-file (not synthesized). (2633 without)
 
 ]
 
@@ -179,385 +197,6 @@ selected_anums_some2 = [
 "A290076",
 "A290082",
 "A290083",
-]
-
-selected_anums_some = [
-"A046523",
-"A289621",
-"A289622",
-"A289623",
-"A289626"
-"A286600"
-]
-
-selected_anums_for_A032742_related = [
-"A032742",
-"A286386",
-"A286473",
-"A286474",
-"A286475",
-"A286476",
-]
-
-selected_anums_for_A286456 = [
-"A056239",
-"A243503",
-"A286456",
-]
-
-selected_anums_A286457 = [
-"A078898",
-"A246277",
-"A286457",
-]
-
-selected_anums_futil = [
-"A286458", # 22745 suspected matching
-"A286459"  # 25516 suspected matching (not enough duplicate-terms among the Data-section, thus almost injective!)
-]
-
-selected_anums_ordinals = [
-"A263017",
-"A286478",
-"A286552",
-"A286554",
-"A286558"
-]
-
-selected_anums_hofstadter = [
-"A004001",
-"A005185",
-"A286541",
-"A286559",
-"A286560"
-]
-
-# "A286360",
-# "A046523"
-# "A285334",
-# "A286357",
-
-selected_anums_b = [
-"A103391",
-"A286370",
-"A286371",
-"A286372",
-"A286373",
-"A286374",
-"A286375",
-"A286376",
-"A286379",
-"A286473",
-"A286474",
-"A286475",
-"A286476"
-
-# "A001511",
-# "A046523",
-# "A161942",
-# "A286034",
-# "A286260",
-
-# "A286367",
-# "A257993",
-# "A278226",
-# "A286253",
-# "A286254",
-# "A286382", # A257993 & A278226 # 15 + 3 = 302 !
-# "A286383",
-# "A286384",
-
-# "A278221",
-
-# "A046523",
-# "A286255",
-# "A286256",
-# "A286257",
-# "A286258",
-
-# "A286243",
-# "A286250",
-# "A286366",
-
-# "A285334"
-# "A278221"
-# "A026741"
-# "A060681",
-# "A161942"
-# "A269174", # Rul 124, Many many matches, not all spurious? Use b-files?
-]
-
-selected_anums1 = [
-
-"A252463",
-
-"A285728",
-
-"A253554",
-
-"A286104",
-"A286107",
-
-"A285722",
-"A285723",
-
-"A285732",
-"A285733",
-
-"A286153",
-"A286155",
-
-"A286101",
-"A286102",
-"A285724",
-
-"A286156",
-"A286157",
-"A286158",
-"A286159",
-
-"A286160",
-
-"A286161",
-
-# "A252463",
-# "A278222",
-# "A278531",
-# "A278533",
-# "A278535"
-
-# "A283990",
-# "A283995",
-
-# "A284010",
-# "A284011",
-# "A284012"
-]
-
-selected_anums2 = [ # Various row & column indices, for sieves, etc.
-"A000265",
-"A001175", # Pisano periods (or Pisano numbers): period of Fibonacci numbers mod n
-"A001179", # Leonardo logarithm of n. 
-
-"A065371",
-"A063918",
-"A001223", # 1+29 matches, all relevant, also A135732?
-"A003417", # About 200 matches, many relevant.
-"A007913",
-"A007949",
-"A046523",
-"A091223",
-"A112591", # 1+3 matches, all relevant, also A237881 "a(n) = 2-adic valuation of prime(n)+prime(n+1)" ???
-# Case ...01 and ...11 is possible (twin primes), leaves 2, OK.
-# Case ...011 and ...111 also possible (e.g. 19 and 23), leaves 4, (A007814 (+ 19 23)) = 1. 
-# Case ?
-"A055396",
-"A054494",
-"A078898",
-"A105800",
-"A111701", # Noisy?
-"A056671",
-"A065936",
-"A065937",
-"A048675",
-"A097246",
-"A276075",
-"A276085",
-"A052126",
-"A056239",
-"A278510",
-"A278520",
-"A278521",
-"A278522",
-"A278530"
-"A064989",
-"A066136",
-"A098189",
-"A252463",
-"A256989",
-"A256990",
-"A256992",
-"A260437",
-"A260438",
-"A276146",
-"A278528",
-"A278529",
-"A260738",
-"A260739",
-"A002326",
-"A003108",
-"A261226",
-"A003415",
-"A004001",
-"A006370",
-"A010060",
-"A014682",
-"A032742",
-"A033461",
-"A033985",
-"A049820",
-"A060681",
-"A084531",
-"A087808",
-"A127301",
-"A127302",
-"A239002",
-"A239003",
-"A255131",
-"A264977",
-"A275728",
-"A276528",
-"A277198",
-"A277330",
-"A277333", # (Huge terms!) Left inverse of A260443, giving 0 as a result when n is outside of the range of A260443.
-"A277886",
-"A277895",
-"A277903",
-"A277906",
-"A278158",
-"A278160",
-"A278162",
-"A278165",
-"A278217",
-"A278218",
-"A278219",
-"A278220",
-"A278221",
-"A278222",
-"A278223",
-"A278224",
-"A278225",
-"A278226",
-"A278227",
-"A278228",
-"A278229",
-"A278230",
-"A278231",
-"A278232",
-"A278233",
-"A278234",
-"A278235",
-"A278236",
-"A278237",
-"A278240",
-"A278241",
-"A278242",
-"A278243",
-"A278244",
-"A278245",
-"A278246",
-"A278247",
-"A278248",
-"A278249",
-"A278250",
-"A278251",
-"A278252",
-"A278253",
-"A278254",
-"A278255",
-"A278256",
-"A278257",
-"A278258",
-"A278259",
-"A278260",
-"A278261",
-"A278262",
-"A278263",
-"A278264",
-"A278266",
-"A278488",
-"A278497",
-"A278501",
-"A278502",
-"A278523",
-"A278524",
-"A278525",
-"A278526",
-"A278527",
-"A278531",
-"A278532",
-"A278533",
-"A278534",
-"A278535",
-"A278540",
-"A278541",
-"A278542",
-"A278543",
-"A279350",
-"A279354",
-###
-"A280488",
-"A280489",
-"A280490",
-"A280491",
-"A280492",
-"A280493",
-"A280494",
-"A280495",
-"A280496",
-"A280497",
-"A280498",
-"A280499",
-"A280500",
-"A280501",
-"A280502",
-"A280503",
-"A280504",
-"A280505",
-"A280506",
-"A280507",
-"A280508",
-"A280509",
-"A054494", # Largest Fibonacci factor of n.
-"A054495", # Smallest k such that n/k is a Fibonacci number.
-"A105800", # Greatest Fibonacci number that is a proper divisor of the n-th Fibonacci number
-"A280686", # Largest Fibonacci proper divisor of n.
-"A280687",
-"A280688",
-"A280689",
-# "A280690", # a(n) = A000045(n) / A105800(n); the n-th Fibonacci number divided by its largest Fibonacci proper divisor.
-"A280691",
-"A280694",
-"A280695",
-"A280696",
-"A280697",
-"A280698",
-"A280699",
-"A047994",
-"A060654",
-"A060766",
-"A116512",
-"A276836",
-"A105222",
-"A087267",
-"A203814",
-"A218799",
-"A075444",
-"A216282",
-"A072594",
-"A002034",
-"A214967",
-"A217667",
-"A079868",
-"A088444",
-"A088445",
-"A020653",
-"A020652",
-"A094522",
-"A104714",
-"A270313",
-"A194742",
-"A003324",
-"A110630",
-"A116529",
-"A120250",
-"A120249",
-"A120251",
-"A076511",
-"A096776",
-"A280684"
-
-###
 ]
 
 
