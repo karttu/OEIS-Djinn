@@ -12,7 +12,7 @@
 #
 # Should run also in cloud.sagemath.com (now cocalc.com)
 #
-# Last edited 2026-11-24 by Antti Karttunen
+# Last edited 2026-11-28 by Antti Karttunen
 
 # 2017-05-19   Added the check for the minimum size of the second largest eq.class of the matching sequence,
 #              which allows us to prune off many false positives that are "almost injective", e.g.,
@@ -66,6 +66,8 @@
 #              that would survive more than a quarter of century...
 #              Finished the job of changing map(...) to list(map(...)), hopefully!
 #
+# 2026-11-28   The outputfile name has now to be explicitly specified with --output option, no more magic literals in the source!
+#
 #
 
 import os
@@ -85,106 +87,99 @@ minsize_for_the_second_largest_eq_class = 2 # Usually best to be at least 2.
 singleton_classes_also = True # If true, then also matches with only singleton equivalence classes are considered
 
 
-def main():
-  bfiles = read_bfilelist("bfilelist")
-
-  if(len(sys.argv) > 1):
-    if("--help" == sys.argv[1]):
-      sys.stdout.write("Usage: " + sys.argv[0] + "\n   For ordinary usage involving stripped and names downloaded from https://oeis.org/wiki/Welcome#Compressed_Versions start without any arguments.\n\n")
-      sys.stdout.write("Usage: " + sys.argv[0] + " bfile1 bfile2 ... bfilen\n    Given n text-files in b-file format, output a report whether each distinct pair A, B seems to satisfy A => B or not.\n")
-      sys.stdout.write("\nFor example, by giving file http://oeis.org/A101296/b101296.txt as one of the arguments, it can be immediately seen if the sequences for other b-files certainly are not dependent on prime signature only.\n")
-      exit(1)
-
-    off = 0
-    filenames = sys.argv[1:]
-    seqs = []
-    inverses = []
-    for filename in filenames:
-      seq = read_bfile_as_a_list(filename)
-      seqs.append(seq)
-      inverses.append(get_inverses(seq,off))
-
-    for i in range(len(seqs)):
-      for j in range(len(seqs)):
-        sys.stdout.write("\nIt seems that " + filenames[i] + " (" + str(len(seqs[i])) + " terms) => " + filenames[j]  + " (" + str(len(seqs[j])) + " terms) is: ")
-        result = has_coarser_eq_classes_with_threshold(seqs[j],off,inverses[i],at_least_n_distinct_classes)
-        if(result): result = (result >= at_least_n_distinct_classes)
-        print(result)
-      print("---")
-      print("")
-  else: # No args
-    if((not os.path.exists(datafile)) or (os.path.exists(org_datafile) and (os.stat(datafile).st_mtime < os.stat(org_datafile).st_mtime))):
-      if(not os.path.exists(datafile)): sys.stdout.write("File " + datafile + " does not exist, preparing it from " + org_datafile + "\n")
-      else: sys.stdout.write("File " + datafile + " exists, but is out of date, repreparing from " + org_datafile + "\n")
-      if(not os.path.exists(org_datafile)):
-        sys.stdout.write("File " + org_datafile + " does not exist either, please download it with command:\n  wget https://oeis.org/stripped.gz\nand then\n  gunzip stripped.gz\nDo the same with https://oeis.org/names.gz\n")
-        exit(1)
-
-      
-      count_almost_injections_from_stripped_data(org_datafile,datafile,8)
-
-    main_loop_over_datafile(selected_anums,datafile,namefile,outputfile,at_least_n_distinct_classes,max_diff_for_two_largest_classes,minlength_for_seq2,minsize_for_the_second_largest_eq_class,bfiles)
-
-# main ends here.
-    
-
 # This list contains all such "filter sequences" whose second largest eq.class is 1 (that is, sequences that have just one big eq.class, and all the rest are singletons),
 # but which are seqs I still want to be included in the results, even if minsize_for_the_second_largest_eq_class above is set to value larger than 1:
 # Also sequences like A402578 that I want to include in the results, even though in the data section they seem like to be like that.
 my_slec1_filters = ["A127648", "A305800", "A305801", "A305890", "A305900", "A305976", "A305979", "A305980", "A319701", "A319702", "A320014", "A322810", "A326201", "A326202", "A326203", "A346488", "A379000", "A402578"]
 
 
-outputfile = "./output_for_A379000_with_singletons_and_slec2_2026-11-24.txt" # This is the file name where the output goes when the script is started without any arguments. It is better to correspond with the A-numbers mentioned in the beginning of the selected_anums structure below:
+outputfile = "" # Must be now specified by the user with -o option.
+
+
+def main():
+
+  if(len(sys.argv) > 1):
+    if("--output" == sys.argv[1]):
+      outputfile = sys.argv[2]
+      if((not os.path.exists(datafile)) or (os.path.exists(org_datafile) and (os.stat(datafile).st_mtime < os.stat(org_datafile).st_mtime))):
+        if(not os.path.exists(datafile)): sys.stdout.write("File " + datafile + " does not exist, preparing it from " + org_datafile + "\n")
+        else: sys.stdout.write("File " + datafile + " exists, but is out of date, repreparing from " + org_datafile + "\n")
+        if(not os.path.exists(org_datafile)):
+          sys.stdout.write("File " + org_datafile + " does not exist either, please download it with command:\n  wget https://oeis.org/stripped.gz\nand then\n  gunzip stripped.gz\nDo the same with https://oeis.org/names.gz\n")
+          exit(1)
+      count_almost_injections_from_stripped_data(org_datafile,datafile,8)
+    else: # The other usage where we compare two or more b-files
+      off = 0
+      filenames = sys.argv[1:]
+      seqs = []
+      inverses = []
+      for filename in filenames:
+        seq = read_bfile_as_a_list(filename)
+        seqs.append(seq)
+        inverses.append(get_inverses(seq,off))
+  
+      for i in range(len(seqs)):
+        for j in range(len(seqs)):
+          sys.stdout.write("\nIt seems that " + filenames[i] + " (" + str(len(seqs[i])) + " terms) => " + filenames[j]  + " (" + str(len(seqs[j])) + " terms) is: ")
+          result = has_coarser_eq_classes_with_threshold(seqs[j],off,inverses[i],at_least_n_distinct_classes)
+          if(result): result = (result >= at_least_n_distinct_classes)
+          print(result)
+        print("---")
+        print("")
+      exit(0)
+
+
+  else:
+
+    sys.stdout.write("Usage: " + sys.argv[0] + "\n   For ordinary usage involving stripped and names downloaded from https://oeis.org/wiki/Welcome#Compressed_Versions start with --output outfilename without any other arguments or options.\n\n")
+    sys.stdout.write("Usage: " + sys.argv[0] + " bfile1 bfile2 ... bfilen\n    Given n text-files in b-file format, output a report whether each distinct pair A, B seems to satisfy A => B or not.\n")
+    sys.stdout.write("\nFor example, by giving file http://oeis.org/A101296/b101296.txt as one of the arguments, it can be immediately seen if the sequences for other b-files certainly are not dependent on prime signature only.\n")
+    exit(1)
+
+  if(outputfile == ""):
+    sys.stdout.write("Please specify the output file with option -o filename\n")
+    exit(1)
+  else:
+    bfiles = read_bfilelist("bfilelist") # This hasn't really been updated at OEIS side since October 5th 2025. Pity!
+    main_loop_over_datafile(selected_anums,datafile,namefile,outputfile,at_least_n_distinct_classes,max_diff_for_two_largest_classes,minlength_for_seq2,minsize_for_the_second_largest_eq_class,bfiles)
+
+# main ends here.
+    
 
 selected_anums_A379000_only = [
   "A379000" # 9519 / 2153 # Hmm... doesn't work so well as one below.
 ]
 
-# selected_anums = [ "A389904" ]
 
 selected_anums = [
 
 # If multiple A-numbers are given, then the most exclusive should come first, and after each subsequent A-number
-# the "total of X suspected matching sequences were found" count excludes the previous matches. For example, the second
-# count here will be then the cardinality of the {setwise difference matches to A295300 \ matches to A101296}, and
-# the third count will be the cardinality of  the {setwise difference matches to A305801 \ matches to A295300}.
+# the "total of X suspected matching sequences were found" count excludes the previous matches.
 # NOTE: if this doesn't work as you expect, check that all the active filter Anumbers are found in non-injections.txt
 # If the problem persists (e.g., that file has been cut prematurely), then rm non-injections.txt and run again.
 #
-# Comments indicate the situation as of Nov 24 2026, not necessarily most recent.
 
+# Counts from 2026-11-28:
 
-"A401721", # 1689 (many false positives, probably)
-"A007814", # 554
-"A130909", # 373
-"A010881", # 652
-"A101296", # 1083
-"A300232", # 381
-"A353560", # 1397
-"A305800", # 2154
-# "A322589", # 
-"A322591", # 57
-"A322592", # 9
-"A305801", # 1444
-"A127648", # 34
-"A379000"  # 1130. Total 10957 matches.
-
-# Old counts from December 2025 I assume:
-# "A007814", # (593,  400 without b-file, don't care about them) the 2-adic valuation, used to filter chaff off from the results of later filters
-# "A130909", # (375,  273 without b-file, don't care about them) Simple periodic sequence (n mod 16), used just to filter chaff (also all period 2, 4 and 8 seqs) of from the results of filters below
-# "A010881", # (664,  505) n mod 12, we are not interested about the period-3 or period-6 or period-12 sequences.
-# "A101296", # (1450, 284 without a b-file) All sequences that depend only the prime signature of n. (A101296 is the RGS-transform of A046523, Smallest number with same prime signature as n).
-# "A300232", # 745/98
-# "A353560", # 1914/278
-# "A305800", # 2036/334 All sequences x for which x(p) = constant for all primes (including 2).
-# # "A322589", # 7/0
-# "A322591", # 56/3
-# "A322592", # 9/1
-# "A305801", # 1374/175 All sequences x for which x(p) = constant for all odd primes should match to this one, thus including the above sets and also many, many others.
-# "A127648", # 34/3, "triangularizations", triangles with nonzero terms only on the leading or trailing diagonal.
-# "A379000"  # 1068/279.  Total 10318 matches, 7685 with a real b-file (not synthesized). (2633 without)
-
+"A007814", # (602,  many without b-file, don't care about them) the 2-adic valuation, used to filter chaff off from the results of later filters
+"A130909", # (378,  many without b-file, don't care about them) Simple periodic sequence (n mod 16), used just to filter chaff (also all period 2, 4 and 8 seqs) of from the results of filters below
+"A010881", # (668, many) n mod 12, we are not interested about the period-3 or period-6 or period-12 sequences.
+"A101296", # (1605, ??? without a b-file) All sequences that depend only the prime signature of n. (A101296 is the RGS-transform of A046523, Smallest number with same prime signature as n).
+"A300232", # 813/??
+"A353560", # 2078/??
+"A305800", # 2157/?? All sequences x for which x(p) = constant for all primes (including 2).
+"A322591", # 57/?
+"A322592", # 9/?
+"A305801", # 1446/?? All sequences x for which x(p) = constant for all odd primes should match to this one, thus including the above sets and also many, many others.
+"A127648", # 34/?, "triangularizations", triangles with nonzero terms only on the leading or trailing diagonal.
+"A379000"  # 1131/???. All  sequences x for which x(p) = constant for all odd primes > 5. Total 10978 matches.
 ]
+
+
+# selected_anums = [ "A389904" ]
+
+# selected_anums = ["A305801", "A336855"];
+# selected_anums_for_A331304 = ["A305801", "A331304"];
 
 selected_anums_for_A003602 = [
   "A003602" # (1635 suspected matches, and 427 without b-file, as on Jan 12 2025)
